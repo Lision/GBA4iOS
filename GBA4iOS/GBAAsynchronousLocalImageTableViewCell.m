@@ -137,51 +137,46 @@
     
     CANCEL_OPERATION_IF_NEEDED(operation);
     
-    [self prepareAndDisplayImage:image withOperation:operation];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self prepareAndDisplayImage:image withOperation:operation];
+    });
 }
 
-- (void)prepareAndDisplayImage:(UIImage *)image withOperation:(NSOperation *)operation
-{
-    CANCEL_OPERATION_IF_NEEDED(operation);
-    
-    id key = self.imageURL;
-    UIImage *preparedImage = [self.imageCache objectForKey:key];
-    
-    if (preparedImage == nil)
-    {
-        key = self.cacheKey;
-        preparedImage = [self.imageCache objectForKey:key];
-    }
-    
-    if (preparedImage == nil)
-    {
-        preparedImage = [image imageByResizingToFitSize:self.backgroundImageView.bounds.size opaque:YES];
-        [self.imageCache setObject:preparedImage forKey:key];
-    }
-    
-    CANCEL_OPERATION_IF_NEEDED(operation);
-    
+- (void)prepareAndDisplayImage:(UIImage *)image withOperation:(NSOperation *)operation {
     void (^animationBlock)(void) = ^{
         self.activityIndicatorView.alpha = 0.0;
         self.backgroundImageView.alpha = 1.0;
     };
-    
+
     dispatch_async(dispatch_get_main_queue(), ^{
+        CANCEL_OPERATION_IF_NEEDED(operation);
+
+        id key = self.imageURL;
+        UIImage *preparedImage = [self.imageCache objectForKey:key];
+
+        if (preparedImage == nil) {
+            key = self.cacheKey;
+            preparedImage = [self.imageCache objectForKey:key];
+        }
+
+        if (preparedImage == nil) {
+            preparedImage = [image imageByResizingToFitSize:self.backgroundImageView.bounds.size opaque:YES];
+            [self.imageCache setObject:preparedImage forKey:key];
+        }
+
+        CANCEL_OPERATION_IF_NEEDED(operation);
+    
         self.backgroundImageView.image = preparedImage;
         
-        if (self.loadSynchronously)
-        {
+        if (self.loadSynchronously) {
             animationBlock();
-        }
-        else
-        {
+        } else {
             [UIView animateWithDuration:0.2 animations:animationBlock completion:^(BOOL finished) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [self.activityIndicatorView stopAnimating];
                 });
             }];
         }
-        
     });
 }
 
